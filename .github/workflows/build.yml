@@ -1,0 +1,28 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - name: Create Flutter project and apply sources
+        run: |
+          flutter create --org com.aether --project-name remote --platforms=android tmpapp
+          cp src/pubspec.yaml tmpapp/pubspec.yaml
+          cp src/main.dart tmpapp/lib/main.dart
+          cp src/AndroidManifest.xml tmpapp/android/app/src/main/AndroidManifest.xml
+          mkdir -p tmpapp/android/app/src/main/kotlin/com/aether/remote
+          cp src/kotlin/*.kt tmpapp/android/app/src/main/kotlin/com/aether/remote/
+          cp src/res/xml/*.xml tmpapp/android/app/src/main/res/xml/ 2>/dev/null || (mkdir -p tmpapp/android/app/src/main/res/xml && cp src/res/xml/*.xml tmpapp/android/app/src/main/res/xml/)
+          cp src/res/values/*.xml tmpapp/android/app/src/main/res/values/
+      - run: cd tmpapp && flutter pub get && flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aether-remote-apk
+          path: tmpapp/build/app/outputs/flutter-apk/app-release.apk
